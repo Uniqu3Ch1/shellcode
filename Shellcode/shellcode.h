@@ -18,4 +18,25 @@ typedef struct _MY_LDR_DATA_TABLE_ENTRY
 	ULONG SizeOfImage;
 	UNICODE_STRING FullDllName;
 	UNICODE_STRING BaseDllName;
+    ULONG Flags;
+    USHORT LoadCount;
+    USHORT TlsIndex;
+    union {
+        LIST_ENTRY HashLinks;
+        struct {
+            PVOID SectionPointer;
+            ULONG CheckSum;
+        };
+    };
+    union {
+        struct {
+            ULONG TimeDateStamp;
+        };
+        struct {
+            PVOID LoadedImports;
+        };
+    };
+    struct _ACTIVATION_CONTEXT* EntryPointActivationContext;
+
+    PVOID PatchInformation;
 } MY_LDR_DATA_TABLE_ENTRY, * PMY_LDR_DATA_TABLE_ENTRY;
