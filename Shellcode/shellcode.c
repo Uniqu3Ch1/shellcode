@@ -2,7 +2,7 @@
 #include <winternl.h>
 #include "shellcode.h"
 
-#pragma comment(linker, "/Entry:EntryMain")
+#pragma comment(linker, "/Entry:Entry")
 
 #define ROTR32(value, shift)	(((DWORD) value >> (BYTE) shift) | ((DWORD) value << (32 - (BYTE) shift)))
 #define LOADLIBRARYA_HASH				0x0726774c
@@ -35,12 +35,42 @@ struct USER32
 };
 //#pragma data_seg(".text")
 DWORD user[] = { 0x72657375, 0x642e3233, 0x00006c6c };
+//#pragma data_seg(".text$mn")
 DWORD sz_String[] = { 0x214e5750, 0x00000000 };
+//#pragma data_seg(".text$mn")
 BYTE pMessage[] = { 'M','e','s','s','a','g','e','B','o','x','A' };
+int EntryMain();
 HMODULE GetProcAddrByHash(PVOID LibBaseAddr, DWORD FnHash);
 //HMODULE GetProcAddressWithHash(DWORD dwModuleFunctionHash);
+void CreateShellCode();
 HMODULE GetKernel32Base();
 DWORD HashKey(char* key);
+void ShellCodeEnd();
+
+void Entry()
+{
+	CreateShellCode();
+}
+void CreateShellCode() {
+#if defined(_WIN64)
+	HANDLE hFile = CreateFileA("ShellCode_x64.bin", GENERIC_ALL, 0, NULL, CREATE_ALWAYS, 0, NULL);
+#else
+	HANDLE hFile = CreateFileA("ShellCode_x86.bin", GENERIC_ALL, 0, NULL, CREATE_ALWAYS, 0, NULL);
+#endif
+	if (hFile == INVALID_HANDLE_VALUE)
+	{
+		MessageBoxA(NULL, "CreateFileA Error", "Error", MB_ERR_INVALID_CHARS);
+		return;
+	}
+#if defined(_WIN64)
+	ULONG_PTR dwSize = (ULONG_PTR)ShellCodeEnd - (ULONG_PTR)EntryMain;
+#else
+	DWORD dwSize = (DWORD)ShellCodeEnd - (DWORD)EntryMain;
+#endif
+	DWORD dwWrite = 0;
+	WriteFile(hFile, EntryMain, dwSize, &dwWrite, NULL);
+	CloseHandle(hFile);
+}
 
 int EntryMain() {
 	struct USER32 user32;
@@ -225,3 +255,7 @@ HMODULE GetProcAddressWithHash(DWORD dwModuleFunctionHash)
 }
 
 */
+void ShellCodeEnd()
+{
+
+}

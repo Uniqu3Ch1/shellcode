@@ -107,6 +107,7 @@
       <Optimization>MinSpace</Optimization>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <StringPooling>false</StringPooling>
+      <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -115,6 +116,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <GenerateMapFile>true</GenerateMapFile>
       <MapFileName>$(OutDir)$(TargetName).map</MapFileName>
+      <MergeSections>/merge:.data=.text</MergeSections>
     </Link>
     <PostBuildEvent>
       <Command>powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(SolutionDir)tools\Out-Shellcode.ps1" "$(OutDir)$(TargetName)$(TargetExt)" "$(OutDir)$(TargetName).map" "$(SolutionDir)bin\$(TargetName)_x86.bin"</Command>
@@ -147,6 +149,7 @@
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <StringPooling>false</StringPooling>
+      <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -155,6 +158,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <GenerateMapFile>true</GenerateMapFile>
       <MapFileName>$(OutDir)$(TargetName).map</MapFileName>
+      <MergeSections>/merge:.data=.text</MergeSections>
     </Link>
     <PostBuildEvent>
       <Command>powershell.exe -NoProfile -ExecutionPolicy Bypass -File $(SolutionDir)tools\Out-Shellcode.ps1 $(OutDir)$(TargetName)$(TargetExt) $(OutDir)$(TargetName).map $(SolutionDir)bin\$(TargetName)_x64.bin</Command>
