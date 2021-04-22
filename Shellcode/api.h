@@ -68,6 +68,13 @@ typedef LPVOID(WINAPI* T_VirtualAllocEx)
         DWORD  flAllocationType,
         DWORD  flProtect
         );
+typedef LPVOID(WINAPI* T_VirtualAlloc)
+    (
+        LPVOID lpAddress,
+        SIZE_T dwSize,
+        DWORD  flAllocationType,
+        DWORD  flProtect
+        );
 typedef BOOL(WINAPI* T_WriteProcessMemory)
     (
         HANDLE   hProcess,

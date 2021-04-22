@@ -1,5 +1,6 @@
 #pragma once
 #define SECURITY_WIN32
+#define HASCHECK
 #include <windows.h>
 #include <winternl.h>
 #include <tlhelp32.h>
