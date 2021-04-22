@@ -40,3 +40,8 @@ typedef struct _MY_LDR_DATA_TABLE_ENTRY
 
     PVOID PatchInformation;
 } MY_LDR_DATA_TABLE_ENTRY, * PMY_LDR_DATA_TABLE_ENTRY;
+
+typedef struct {
+    u_short sa_family;              /* address family */
+    char    sa_data[14];            /* up to 14 bytes of direct address */
+}sockaddr;
